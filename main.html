@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Habit Tracker</title>
+    
+    <!-- Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .habit-card {
+            transition: all 0.3s ease;
+        }
+
+        .habit-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-stats {
+            background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%);
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #9333ea 0%, #4f46e5 100%);
+        }
+
+        .history-item {
+            transition: all 0.2s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.9);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Stats Component
+        const DashboardStats = ({ habits, history }) => {
+            const totalHabits = habits.length;
+            const completedToday = habits.filter(h => h.lastCompleted === new Date().toDateString()).length;
+            const totalCompletions = history.length;
+
+            return (
+                <div className="dashboard-stats rounded-xl p-6 mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="stats-card text-white rounded-lg p-4">
+                        <h3 className="text-lg opacity-80">Total Habits</h3>
+                        <p className="text-3xl font-bold">{totalHabits}</p>
+                    </div>
+                    <div className="stats-card text-white rounded-lg p-4">
+                        <h3 className="text-lg opacity-80">Completed Today</h3>
+                        <p className="text-3xl font-bold">{completedToday}</p>
+                    </div>
+                    <div className="stats-card text-white rounded-lg p-4">
+                        <h3 className="text-lg opacity-80">Total Completions</h3>
+                        <p className="text-3xl font-bold">{totalCompletions}</p>
+                    </div>
+                </div>
+            );
+        };
+
+        // History Component
+        const HabitHistory = ({ history }) => (
+            <div className="glass rounded-lg p-6 mt-8">
+                <h2 className="text-xl font-bold mb-4">Activity History</h2>
+                <div className="space-y-2">
+                    {history.map((entry, index) => (
+                        <div key={index} className="history-item rounded-lg p-4 flex justify-between items-center">
+                            <div>
+                                <span className="font-medium">{entry.habitName}</span>
+                                <p className="text-sm text-gray-600">{entry.date}</p>
+                            </div>
+                            <div className="flex items-center">
+                                <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
+                                    completed
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                    {history.length === 0 && (
+                        <p className="text-center text-gray-500 py-4">No activity recorded yet</p>
+                    )}
+                </div>
+            </div>
+        );
+
+        // Habit Card Component
+        const HabitCard = ({ habit, onUpdate, onDelete, history }) => {
+            const categoryIcons = {
+                health: "fa-heart",
+                fitness: "fa-dumbbell",
+                productivity: "fa-laptop",
+                mindfulness: "fa-brain",
+                learning: "fa-book",
+                other: "fa-star"
+            };
+
+            const totalCompletions = history.filter(h => h.habitName === habit.name).length;
+
+            return (
+                <div className="glass habit-card rounded-lg p-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800">{habit.name}</h3>
+                            <div className="flex items-center text-gray-600 mt-1">
+                                <i className={`fas ${categoryIcons[habit.category]} mr-2`}></i>
+                                <span className="capitalize">{habit.category}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center">
+                            <div className="mr-4 text-center">
+                                <div className="text-sm text-gray-500">Completions</div>
+                                <div className="flex items-center">
+                                    <span className="text-xl font-bold mr-1">{totalCompletions}</span>
+                                    {totalCompletions > 0 && (
+                                        <i className="fas fa-trophy text-yellow-500"></i>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => onDelete(habit.id)}
+                                className="text-red-500 hover:text-red-600"
+                            >
+                                <i className="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-4">
+                        <div className="flex-1 mr-4">
+                            <div className="text-sm text-gray-500 mb-1">Today's Progress</div>
+                            <div className="h-2 bg-gray-200 rounded-full">
+                                <div
+                                    className="h-full bg-purple-600 rounded-full transition-all duration-300"
+                                    style={{ width: `${habit.progress}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => onUpdate(habit.id)}
+                            className={`p-3 rounded-full ${
+                                habit.lastCompleted === new Date().toDateString()
+                                    ? 'bg-green-500 hover:bg-green-600'
+                                    : 'bg-purple-600 hover:bg-purple-700'
+                            } text-white transition`}
+                        >
+                            <i className={`fas ${habit.lastCompleted === new Date().toDateString() ? 'fa-check' : 'fa-plus'}`}></i>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App Component
+        const HabitTracker = () => {
+            const [habits, setHabits] = useState(() => {
+                const saved = localStorage.getItem('habits');
+                return saved ? JSON.parse(saved) : [];
+            });
+            
+            const [history, setHistory] = useState(() => {
+                const saved = localStorage.getItem('habitHistory');
+                return saved ? JSON.parse(saved) : [];
+            });
+
+            const [showAddModal, setShowAddModal] = useState(false);
+            const [activeView, setActiveView] = useState('grid');
+            const [newHabit, setNewHabit] = useState({
+                name: '',
+                category: 'health',
+                progress: 0,
+                lastCompleted: null,
+            });
+
+            useEffect(() => {
+                localStorage.setItem('habits', JSON.stringify(habits));
+                localStorage.setItem('habitHistory', JSON.stringify(history));
+            }, [habits, history]);
+
+            const addHabit = () => {
+                if (newHabit.name.trim()) {
+                    setHabits([...habits, { ...newHabit, id: Date.now() }]);
+                    setShowAddModal(false);
+                    setNewHabit({
+                        name: '',
+                        category: 'health',
+                        progress: 0,
+                        lastCompleted: null,
+                    });
+                }
+            };
+
+            const updateProgress = (habitId) => {
+                const today = new Date().toDateString();
+                
+                setHabits(habits.map(habit => {
+                    if (habit.id === habitId) {
+                        const wasCompletedToday = habit.lastCompleted === today;
+                        
+                        if (!wasCompletedToday) {
+                            const historyEntry = {
+                                habitName: habit.name,
+                                date: new Date().toLocaleString(),
+                                action: 'completed',
+                                category: habit.category
+                            };
+                            setHistory([historyEntry, ...history]);
+                        }
+
+                        return {
+                            ...habit,
+                            progress: wasCompletedToday ? 0 : 100,
+                            lastCompleted: wasCompletedToday ? null : today,
+                        };
+                    }
+                    return habit;
+                }));
+            };
+
+            const deleteHabit = (habitId) => {
+                const habitToDelete = habits.find(h => h.id === habitId);
+                setHabits(habits.filter(h => h.id !== habitId));
+                setHistory(history.filter(h => h.habitName !== habitToDelete.name));
+            };
+
+            return (
+                <div className="container mx-auto px-4 py-8">
+                    {/* Header */}
+                    <div className="glass rounded-lg p-6 mb-8">
+                        <div className="flex flex-col md:flex-row justify-between items-center">
+                            <div>
+                                <h1 className="text-3xl font-bold text-purple-600">Habit Tracker</h1>
+                                <p className="text-gray-600 mt-2">Track your daily progress and build better habits</p>
+                            </div>
+                            <div className="flex items-center space-x-4 mt-4 md:mt-0">
+                                <div className="flex bg-white rounded-lg p-1">
+                                    <button
+                                        onClick={() => setActiveView('grid')}
+                                        className={`px-4 py-2 rounded-lg ${
+                                            activeView === 'grid' ? 'bg-purple-100 text-purple-600' : 'text-gray-600'
+                                        }`}
+                                    >
+                                        <i className="fas fa-th-large mr-2"></i>Grid
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveView('list')}
+                                        className={`px-4 py-2 rounded-lg ${
+                                            activeView === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-600'
+                                        }`}
+                                    >
+                                        <i className="fas fa-list mr-2"></i>List
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => setShowAddModal(true)}
+                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+                                >
+                                    <i className="fas fa-plus mr-2"></i>Add Habit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Dashboard Stats */}
+                    <DashboardStats habits={habits} history={history} />
+
+                    {/* Habits Grid/List */}
+                    {activeView === 'grid' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {habits.map(habit => (
+                                <HabitCard
+                                    key={habit.id}
+                                    habit={habit}
+                                    onUpdate={updateProgress}
+                                    onDelete={deleteHabit}
+                                    history={history}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="glass rounded-lg p-6">
+                            {habits.map(habit => (
+                                <div key={habit.id} className="border-b last:border-b-0 py-4">
+                                    <HabitCard
+                                        habit={habit}
+                                        onUpdate={updateProgress}
+                                        onDelete={deleteHabit}
+                                        history={history}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* History Section */}
+                    <HabitHistory history={history} />
+
+                    {/* Add Habit Modal */}
+                    {showAddModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                            <div className="glass rounded-lg p-6 w-full max-w-md">
+                                <h2 className="text-2xl font-bold mb-4">Add New Habit</h2>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-gray-700 mb-2">Habit Name</label>
+                                        <input
+                                            type="text"
+                                            value={newHabit.name}
+                                            onChange={(e) => setNewHabit({...newHabit, name: e.target.value})}
+                                            className="w-full p-2 border rounded-lg"
+                                            placeholder="Enter habit name"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-gray-700 mb-2">Category</label>
+                                        <select
+                                            value={newHabit.category}
+                                            onChange={(e) => setNewHabit({...newHabit, category: e.target.value})}
+                                            className="w-full p-2 border rounded-lg"
+                                        >
+                                            <option value="health">Health</option>
+                                            <option value="fitness">Fitness</option>
+                                            <option value="productivity">Productivity</option>
+                                            <option value="mindfulness">Mindfulness</option>
+                                            <option value="learning">Learning</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex justify-end space-x-4">
+                                        <button
+                                            onClick={() => setShowAddModal(false)}
+                                            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={addHabit}
+                                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                                        >
+                                            Add Habit
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<HabitTracker />);
+    </script>
+</body>
+</html>
